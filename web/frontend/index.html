@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sora 批量注册</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="login-page" class="page">
+      <div class="login-box">
+        <h1>Sora 批量注册</h1>
+        <form id="login-form">
+          <input type="text" id="login-username" placeholder="账号" required autocomplete="username" />
+          <input type="password" id="login-password" placeholder="密码" required autocomplete="current-password" />
+          <button type="submit">登录</button>
+        </form>
+        <p id="login-error" class="error"></p>
+      </div>
+    </div>
+    <div id="admin-page" class="page hidden layout-sidebar">
+      <aside class="sidebar">
+        <div class="logo">Sora 批量注册</div>
+        <nav class="nav">
+          <a href="#" data-tab="logs">批量生成</a>
+          <a href="#" data-tab="accounts">账号管理</a>
+          <a href="#" data-tab="emails">邮箱管理</a>
+          <a href="#" data-tab="bank-cards">银行卡管理</a>
+          <a href="#" data-tab="phones">手机号管理</a>
+          <a href="#" data-tab="settings">系统设置</a>
+        </nav>
+        <div class="sidebar-footer">
+          <a class="sidebar-link" href="https://qm.qq.com/cgi-bin/qm/qr?k=382446" target="_blank" rel="noopener">QQ群 382446</a>
+          <a class="sidebar-link" href="https://github.com/432539/Sora-Register" target="_blank" rel="noopener">仓库地址</a>
+          <span class="user-name user-name-clickable" id="current-user" title="点击修改账号密码"></span>
+          <button type="button" id="btn-logout" class="btn-logout">退出</button>
+        </div>
+      </aside>
+      <main class="main">
+        <section id="panel-accounts" class="panel">
+          <h2>账号管理</h2>
+          <div class="toolbar">
+            <label>状态 <select id="filter-status"><option value="">全部</option><option value="Registered">已注册</option><option value="Registered+Sora">Sora</option><option value="Plus activated">Plus</option></select></label>
+            <label>SORA <select id="filter-sora"><option value="">全部</option><option value="true">是</option><option value="false">否</option></select></label>
+            <label>PLUS <select id="filter-plus"><option value="">全部</option><option value="true">是</option><option value="false">否</option></select></label>
+            <button type="button" id="btn-export-accounts">批量导出 CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>邮箱</th><th>密码</th><th>状态</th><th>SORA</th><th>PLUS</th><th>手机</th><th>注册时间</th></tr></thead>
+              <tbody id="accounts-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="accounts-pagination"></div>
+        </section>
+        <section id="panel-emails" class="panel hidden">
+          <h2>邮箱管理</h2>
+          <div class="email-api-card">
+            <h3>从 Hotmail007 拉取</h3>
+            <p class="email-api-desc">需在 <a href="#" id="link-to-settings">系统设置</a> 中配置邮箱 API 地址与 KEY（clientKey）。<a href="https://hotmail007.com/zh/apiDoc" target="_blank" rel="noopener">API 文档</a>（单个 $0.0015/账号 - $0.02/账号）</p>
+            <div class="email-api-row">
+              <span>余额：<strong id="email-api-balance">--</strong></span>
+              <label>类型 <select id="email-api-mail-type"><option value="outlook">outlook</option><option value="hotmail">hotmail</option><option value="hotmail Trusted">hotmail 可信（有效期 3-6 个月）</option><option value="outlook Trusted">outlook 可信（有效期 3-6 个月）</option></select></label>
+              <label>数量 <input type="number" id="email-api-quantity" min="1" max="100" value="1" /></label>
+              <button type="button" id="btn-email-api-stock">查询库存</button>
+              <button type="button" id="btn-email-api-fetch">拉取并导入</button>
+            </div>
+            <p id="email-api-msg" class="email-api-msg"></p>
+          </div>
+          <div class="toolbar">
+            <button type="button" id="btn-add-email">添加</button>
+            <button type="button" id="btn-batch-import-email">批量导入</button>
+            <button type="button" id="btn-batch-export-email">批量导出</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>邮箱</th><th>密码</th><th>UUID</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="emails-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="panel-bank-cards" class="panel hidden">
+          <h2>银行卡管理</h2>
+          <div class="toolbar">
+            <button type="button" id="btn-add-card">添加</button>
+            <button type="button" id="btn-batch-import-card">批量导入</button>
+            <button type="button" id="btn-batch-delete-card">批量删除</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th><input type="checkbox" id="check-all-cards" /></th><th>ID</th><th>卡号(掩码)</th><th>使用次数</th><th>备注</th><th>操作</th></tr></thead>
+              <tbody id="cards-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="panel-phones" class="panel hidden">
+          <h2>手机号管理</h2>
+          <p class="panel-desc">每个手机号的可绑定次数在 <a href="#" id="link-to-settings-phones">系统设置</a> 中配置「每个手机号可绑定次数」；批量导入时自动应用该默认值。</p>
+          <div class="email-api-card">
+            <h3>Hero-SMS 接码（OpenAI）</h3>
+            <p class="email-api-desc">需在系统设置中配置手机号接码 API 地址与 KEY。<a href="https://hero-sms.com/cn/api" target="_blank" rel="noopener">API 文档</a></p>
+            <div class="email-api-row">
+              <span>余额：<strong id="sms-api-balance">--</strong></span>
+              <button type="button" id="btn-sms-api-test">测试接口</button>
+              <span>OpenAI 可用数量：<strong id="sms-api-openai-count">--</strong></span>
+              <button type="button" id="btn-sms-api-refresh-openai">查询</button>
+              <button type="button" id="btn-sms-api-debug-prices" class="btn-default">查看原始数据</button>
+              <button type="button" id="btn-sms-api-services" class="btn-default">服务列表</button>
+              </div>
+            <div class="email-api-row" style="margin-top:0.5rem;">
+              <label>获取数量 <input type="number" id="sms-api-get-quantity" min="1" max="20" value="1" /></label>
+              <label>国家 ID <input type="number" id="sms-api-country" value="16" placeholder="16=英国" style="width:80px;" title="16=英国，0=自动" /></label>
+              <button type="button" id="btn-sms-api-get-numbers">获取 OpenAI 号码</button>
+            </div>
+            <p id="sms-api-msg" class="email-api-msg"></p>
+          </div>
+          <div class="toolbar">
+            <button type="button" id="btn-add-phone">添加</button>
+            <button type="button" id="btn-batch-import-phone">批量导入</button>
+            <button type="button" id="btn-batch-delete-phone">批量删除</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th><input type="checkbox" id="check-all-phones" /></th><th>ID</th><th>手机号</th><th>已绑定/上限</th><th>到期时间</th><th>备注</th><th>操作</th></tr></thead>
+              <tbody id="phones-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="panel-logs" class="panel hidden">
+          <h2>批量生成</h2>
+          <div class="dashboard-card">
+            <div class="dashboard-actions">
+              <button type="button" id="btn-start-register" class="btn-dash btn-primary">开始注册</button>
+              <button type="button" id="btn-start-bind-phone" class="btn-dash btn-secondary">开始绑定手机</button>
+              <button type="button" id="btn-start-plus" class="btn-dash btn-secondary">开始开通 Plus</button>
+            </div>
+            <div class="dashboard-stats">
+              <div class="stat-item"><span class="stat-label">今日注册</span><span class="stat-value" id="dash-today">0</span></div>
+              <div class="stat-item"><span class="stat-label">合计注册</span><span class="stat-value" id="dash-total">0</span></div>
+              <div class="stat-item"><span class="stat-label">绑定手机</span><span class="stat-value" id="dash-phone">0</span></div>
+              <div class="stat-item"><span class="stat-label">开通 Plus</span><span class="stat-value" id="dash-plus">0</span></div>
+              <div class="stat-item"><span class="stat-label">成功</span><span class="stat-value stat-ok" id="dash-success">0</span></div>
+              <div class="stat-item"><span class="stat-label">失败</span><span class="stat-value stat-fail" id="dash-fail">0</span></div>
+              <div class="stat-item"><span class="stat-label">邮箱 API</span><span class="stat-value" id="dash-email-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">手机号 API</span><span class="stat-value" id="dash-sms-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">银行卡 API</span><span class="stat-value" id="dash-bank-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">打码 API</span><span class="stat-value" id="dash-captcha-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">线程数</span><span class="stat-value" id="dash-threads">1</span></div>
+            </div>
+          </div>
+          <div class="dashboard-log-section">
+            <div class="log-section-title">最近 20 条日志 <button type="button" id="btn-refresh-dashboard" class="btn-link" style="font-size:12px;margin-left:0.5rem;">刷新</button></div>
+            <div class="log-list log-list-fixed" id="log-list"></div>
+          </div>
+        </section>
+        <section id="panel-settings" class="panel hidden">
+          <h2>系统设置</h2>
+          <form id="settings-form" class="settings-grid">
+            <div class="settings-card">
+              <h3>手机号接码 API</h3>
+              <p class="settings-card-desc">支持 Hero-SMS（SMS-Activate 兼容）。<a href="https://hero-sms.com/cn/api" target="_blank" rel="noopener">API 文档</a></p>
+              <label>API 地址 <input type="text" name="sms_api_url" placeholder="https://hero-sms.com/stubs/handler_api.php" /></label>
+              <label>KEY (api_key) <input type="password" name="sms_api_key" placeholder="Hero-SMS API Key" autocomplete="off" /></label>
+              <label>OpenAI 服务 ID <input type="text" name="sms_openai_service" placeholder="dr（Hero-SMS 中 OpenAI 的 code）" title="接码平台服务列表里 OpenAI 对应 code，Hero-SMS 为 dr" /></label>
+              <label>获取号码最高价 (maxPrice) <input type="number" name="sms_max_price" placeholder="0.55" min="0" step="0.01" title="getNumberV2 时仅接受不高于此价的号码" /></label>
+            </div>
+            <div class="settings-card">
+              <h3>邮箱 API</h3>
+              <label>API 地址 <input type="text" name="email_api_url" placeholder="https://gapi.hotmail007.com" /></label>
+              <label>KEY (clientKey) <input type="password" name="email_api_key" placeholder="Hotmail007 clientKey" autocomplete="off" /></label>
+              <label>默认邮箱类型 <select name="email_api_default_type"><option value="outlook">outlook</option><option value="hotmail">hotmail</option><option value="hotmail Trusted">hotmail 可信（3-6 个月）</option><option value="outlook Trusted">outlook 可信（3-6 个月）</option></select></label>
+            </div>
+            <div class="settings-card">
+              <h3>银行卡 API</h3>
+              <label>平台 <select name="bank_card_api_platform"><option value="寻汇">寻汇</option><option value="万里汇">万里汇</option><option value="空中云汇">空中云汇</option></select></label>
+              <label>API 地址 <input type="text" name="bank_card_api_url" placeholder="https://..." /></label>
+              <label>KEY <input type="password" name="bank_card_api_key" placeholder="API Key" autocomplete="off" /></label>
+            </div>
+            <div class="settings-card">
+              <h3>代理 IP</h3>
+              <label>单代理地址 <input type="text" name="proxy_url" placeholder="http://127.0.0.1:7890" /></label>
+              <label>代理 API 地址 <input type="text" name="proxy_api_url" placeholder="从 API 获取代理列表" /></label>
+            </div>
+            <div class="settings-card">
+              <h3>打码 API</h3>
+              <p class="settings-card-desc">开通 Plus 等流程中会遇到 hCaptcha，可使用 <a href="https://2captcha.com/" target="_blank" rel="noopener">2Captcha</a> 打码。</p>
+              <label>API 地址 <input type="text" name="captcha_api_url" placeholder="https://2captcha.com" /></label>
+              <label>API KEY <input type="password" name="captcha_api_key" placeholder="2Captcha API Key" autocomplete="off" /></label>
+            </div>
+            <div class="settings-card">
+              <h3>运行参数</h3>
+              <label>线程数 <input type="number" name="thread_count" min="1" placeholder="1" /></label>
+              <label>每卡使用次数 <input type="number" name="card_use_limit" min="1" placeholder="1" /></label>
+              <label>每个手机号可绑定次数 <input type="number" name="phone_bind_limit" min="1" placeholder="1" /></label>
+            </div>
+            <div class="settings-submit">
+              <button type="submit">保存全部</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

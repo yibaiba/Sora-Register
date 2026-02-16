@@ -1,0 +1,19 @@
+# 在 protocol 目录执行: docker-compose -f web/docker-compose.yml up -d
+# 默认账号 admin / admin123，请通过环境变量修改
+version: "3"
+services:
+  admin:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    ports:
+      - "1989:1989"
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - SECRET_KEY=change-me-in-production
+      - DATA_DIR=/data
+    volumes:
+      - admin-data:/data
+volumes:
+  admin-data:
