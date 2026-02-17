@@ -39,3 +39,13 @@ def list_logs(
         for r in rows
     ]
     return {"total": total, "page": page, "page_size": page_size, "items": items}
+
+
+@router.delete("")
+def clear_logs(username: str = Depends(get_current_user)):
+    """清空 run_logs 表所有记录。"""
+    init_db()
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM run_logs")
+    return {"ok": True, "message": "已清空日志"}

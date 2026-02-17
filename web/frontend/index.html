@@ -23,21 +23,25 @@
       </div>
     </div>
     <div id="admin-page" class="page hidden layout-sidebar">
-      <aside class="sidebar">
-        <div class="logo">Sora 批量注册</div>
+      <aside class="sidebar collapsed" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo"><span class="logo-icon" aria-hidden="true">S</span><span class="logo-text">Sora 批量注册</span></div>
+          <button type="button" class="sidebar-toggle sidebar-toggle-in-header" id="sidebar-toggle" title="展开/收起菜单" aria-label="展开或收起侧栏"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+        </div>
         <nav class="nav">
-          <a href="#" data-tab="logs">批量注册</a>
-          <a href="#" data-tab="accounts">账号管理</a>
-          <a href="#" data-tab="emails">邮箱管理</a>
-          <a href="#" data-tab="bank-cards">银行卡管理</a>
-          <a href="#" data-tab="phones">手机号管理</a>
-          <a href="#" data-tab="settings">系统设置</a>
+          <a href="#" data-tab="logs" title="批量注册"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-text">批量注册</span></a>
+          <a href="#" data-tab="accounts" title="账号管理"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-text">账号管理</span></a>
+          <a href="#" data-tab="emails" title="邮箱管理"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span><span class="nav-text">邮箱管理</span></a>
+          <a href="#" data-tab="bank-cards" title="银行卡管理"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span><span class="nav-text">银行卡管理</span></a>
+          <a href="#" data-tab="phones" title="手机号管理"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span><span class="nav-text">手机号管理</span></a>
+          <a href="#" data-tab="settings" title="系统设置"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="nav-text">系统设置</span></a>
         </nav>
         <div class="sidebar-footer">
-          <a class="sidebar-link" href="https://qm.qq.com/cgi-bin/qm/qr?k=382446" target="_blank" rel="noopener">QQ群 382446</a>
-          <a class="sidebar-link" href="https://github.com/432539/Sora-Register" target="_blank" rel="noopener">仓库地址</a>
-          <span class="user-name user-name-clickable" id="current-user" title="点击修改账号密码"></span>
+          <a class="sidebar-link" href="https://qm.qq.com/cgi-bin/qm/qr?k=382446" target="_blank" rel="noopener"><span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span><span class="footer-text">QQ群 382446</span></a>
+          <a class="sidebar-link" href="https://github.com/432539/Sora-Register" target="_blank" rel="noopener"><span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span><span class="footer-text">仓库地址</span></a>
+          <span class="user-name user-name-clickable" id="current-user" title="点击修改账号密码"><span class="user-name-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/></svg></span><span class="user-name-text"></span></span>
           <button type="button" id="btn-logout" class="btn-logout">退出</button>
+          <button type="button" class="sidebar-toggle sidebar-toggle-in-footer" id="sidebar-toggle-footer" title="展开/收起菜单" aria-label="展开或收起侧栏"><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span><span class="toggle-footer-text">收起</span></button>
         </div>
       </aside>
       <main class="main">
@@ -135,8 +139,10 @@
           <div class="dashboard-card">
             <div class="dashboard-actions">
               <button type="button" id="btn-start-register" class="btn-dash btn-primary">开启注册</button>
+              <button type="button" id="btn-stop-register" class="btn-dash btn-secondary" style="display:none;">停止任务</button>
               <button type="button" id="btn-start-bind-phone" class="btn-dash btn-secondary">开始绑定手机</button>
               <button type="button" id="btn-start-plus" class="btn-dash btn-secondary">开始开通 Plus</button>
+              <span id="register-status-heartbeat" class="register-heartbeat" style="display:none;"></span>
             </div>
             <div class="dashboard-stats">
               <div class="stat-item"><span class="stat-label">今日注册</span><span class="stat-value" id="dash-today">0</span></div>
@@ -145,16 +151,23 @@
               <div class="stat-item"><span class="stat-label">开通 Plus</span><span class="stat-value" id="dash-plus">0</span></div>
               <div class="stat-item"><span class="stat-label">成功</span><span class="stat-value stat-ok" id="dash-success">0</span></div>
               <div class="stat-item"><span class="stat-label">失败</span><span class="stat-value stat-fail" id="dash-fail">0</span></div>
-              <div class="stat-item"><span class="stat-label">邮箱 API</span><span class="stat-value" id="dash-email-api">—</span></div>
-              <div class="stat-item"><span class="stat-label">手机号 API</span><span class="stat-value" id="dash-sms-api">—</span></div>
-              <div class="stat-item"><span class="stat-label">银行卡 API</span><span class="stat-value" id="dash-bank-api">—</span></div>
-              <div class="stat-item"><span class="stat-label">打码 API</span><span class="stat-value" id="dash-captcha-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">邮箱 API</span><span class="stat-value stat-value-muted" id="dash-email-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">手机号 API</span><span class="stat-value stat-value-muted" id="dash-sms-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">银行卡 API</span><span class="stat-value stat-value-muted" id="dash-bank-api">—</span></div>
+              <div class="stat-item"><span class="stat-label">打码 API</span><span class="stat-value stat-value-muted" id="dash-captcha-api">—</span></div>
               <div class="stat-item"><span class="stat-label">线程数</span><span class="stat-value" id="dash-threads">1</span></div>
             </div>
           </div>
-          <div class="dashboard-log-section">
-            <div class="log-section-title">最近 20 条日志 <button type="button" id="btn-refresh-dashboard" class="btn-link" style="font-size:12px;margin-left:0.5rem;">刷新</button></div>
+          <div class="log-panel">
+            <div class="log-panel-header">
+              <span class="log-panel-title" id="log-panel-title">最近 20 条日志</span>
+              <div class="log-panel-actions">
+                <button type="button" id="btn-refresh-dashboard" class="log-panel-refresh" title="刷新">刷新</button>
+                <button type="button" id="btn-clear-logs" class="log-panel-refresh log-panel-clear" title="清空">清空</button>
+              </div>
+            </div>
             <div class="log-list log-list-fixed" id="log-list"></div>
+            <div class="log-panel-expand" id="log-expand-area"></div>
           </div>
         </section>
         <section id="panel-settings" class="panel hidden">

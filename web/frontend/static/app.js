@@ -49,8 +49,80 @@ function showPage(name) {
   if (name === "logs") {
     loadDashboard();
     loadLogs();
+    updateRegisterStatusOnce();
+    startRegisterStatusPoll();
+  } else {
+    stopRegisterStatusPoll();
   }
   if (name === "settings") loadSettings();
+}
+
+var registerStatusPollTimer = null;
+var REGISTER_POLL_INTERVAL_MS = 1500;
+
+/** 状态来源：GET /api/register/status 的 running 字段（后端 _registration_running，重启后必为 false） */
+function updateRegisterButtonFromStatus(s) {
+  var btnStart = document.getElementById("btn-start-register");
+  var btnStop = document.getElementById("btn-stop-register");
+  var heartbeatEl = document.getElementById("register-status-heartbeat");
+  if (!btnStart) return;
+  var running = !!(s && s.running === true);
+  if (running) {
+    btnStart.textContent = "正在注册";
+    btnStart.disabled = true;
+    btnStart.classList.add("btn-dash-disabled");
+    if (btnStop) { btnStop.style.display = ""; }
+    if (heartbeatEl) {
+      heartbeatEl.style.display = "";
+      heartbeatEl.textContent = s.last_heartbeat ? "最后心跳时间 " + (s.last_heartbeat.replace("T", " ").replace("Z", "").slice(0, 19)) : "";
+    }
+  } else {
+    btnStart.textContent = "开启注册";
+    btnStart.disabled = false;
+    btnStart.classList.remove("btn-dash-disabled");
+    if (btnStop) { btnStop.style.display = "none"; }
+    if (heartbeatEl) {
+      heartbeatEl.style.display = "none";
+      heartbeatEl.textContent = "";
+    }
+  }
+}
+
+function updateRegisterStatusOnce() {
+  api("/api/register/status").then(function(s) {
+    updateRegisterButtonFromStatus(s);
+  }).catch(function() {
+    updateRegisterButtonFromStatus({ running: false });
+  });
+}
+
+function startRegisterStatusPoll() {
+  stopRegisterStatusPoll();
+  registerStatusPollTimer = setInterval(function() {
+    api("/api/register/status").then(function(s) {
+      updateRegisterButtonFromStatus(s);
+      loadDashboard();
+      loadLogs();
+    }).catch(function() {
+      updateRegisterButtonFromStatus({ running: false });
+    });
+  }, REGISTER_POLL_INTERVAL_MS);
+}
+
+document.addEventListener("visibilitychange", function() {
+  if (document.visibilityState === "visible") {
+    var panelLogs = document.getElementById("panel-logs");
+    if (panelLogs && !panelLogs.classList.contains("hidden")) {
+      updateRegisterStatusOnce();
+    }
+  }
+});
+
+function stopRegisterStatusPoll() {
+  if (registerStatusPollTimer) {
+    clearInterval(registerStatusPollTimer);
+    registerStatusPollTimer = null;
+  }
 }
 
 function showModal(html) {
@@ -105,7 +177,7 @@ if (!token) {
   document.getElementById("login-page").classList.add("hidden");
   document.getElementById("admin-page").classList.remove("hidden");
   api("/api/auth/me").then((d) => {
-    document.getElementById("current-user").textContent = d.username;
+    var u = document.getElementById("current-user"); if (u) { var t = u.querySelector(".user-name-text"); if (t) t.textContent = d.username; else u.textContent = d.username; }
   }).catch(() => {
     localStorage.removeItem("admin_token");
     window.location.reload();
@@ -131,7 +203,7 @@ document.getElementById("login-form").addEventListener("submit", (e) => {
       localStorage.setItem("admin_token", token);
       document.getElementById("login-page").classList.add("hidden");
       document.getElementById("admin-page").classList.remove("hidden");
-      document.getElementById("current-user").textContent = d.username || username;
+      var cu = document.getElementById("current-user"); if (cu) { var ct = cu.querySelector(".user-name-text"); if (ct) ct.textContent = d.username || username; else cu.textContent = d.username || username; }
       errEl.textContent = "";
       showPage("accounts");
     })
@@ -144,6 +216,25 @@ document.getElementById("btn-logout").addEventListener("click", () => {
   localStorage.removeItem("admin_token");
   window.location.reload();
 });
+
+// 侧栏默认收起，可展开；状态存 localStorage；收起时用底部按钮，展开时用头部按钮
+(function() {
+  var sidebar = document.getElementById("sidebar");
+  var key = "sidebarCollapsed";
+  function toggleSidebar() {
+    sidebar.classList.toggle("collapsed");
+    localStorage.setItem(key, sidebar.classList.contains("collapsed") ? "1" : "0");
+  }
+  if (sidebar) {
+    var saved = localStorage.getItem(key);
+    if (saved === "0" || saved === "false") sidebar.classList.remove("collapsed");
+    else sidebar.classList.add("collapsed");
+    var btnHeader = document.getElementById("sidebar-toggle");
+    var btnFooter = document.getElementById("sidebar-toggle-footer");
+    if (btnHeader) btnHeader.addEventListener("click", toggleSidebar);
+    if (btnFooter) btnFooter.addEventListener("click", toggleSidebar);
+  }
+})();
 
 // Nav tabs
 document.querySelectorAll('.nav a[data-tab]').forEach((a) => {
@@ -280,7 +371,7 @@ function loadEmails() {
             }
             var listHtml = '<div class="email-view-list"><div class="email-view-list-title">邮件列表</div><div class="email-view-list-inner">';
             if (list.length === 0) {
-              listHtml += '<p class="email-view-empty">收件箱暂无邮件</p>';
+              listHtml += '<p class="email-view-empty">收件箱暂无邮件或 API 未返回</p>';
             } else {
               list.forEach(function(m, i) {
                 var subj = (m.subject != null || m.title != null) ? (m.subject ?? m.title) : "(无主题)";
@@ -292,7 +383,7 @@ function loadEmails() {
             listHtml += "</div></div>";
             var detailHtml = '<div class="email-view-detail"><div class="email-view-detail-inner">';
             if (list.length === 0) {
-              detailHtml += '<p class="email-view-empty">收件箱暂无邮件，或该邮箱尚未收到新邮件。</p>';
+              detailHtml += '<p class="email-view-empty">收件箱暂无邮件，或该邮箱尚未收到新邮件；当前仅能拉取最新 1 封，更多请登录 Outlook 查看。</p>';
             } else {
               detailHtml += renderMailDetail(list[0]);
             }
@@ -718,19 +809,64 @@ function loadDashboard() {
     document.getElementById("dash-threads").textContent = "—";
   });
 }
-function loadLogs() {
-  api("/api/logs?page=1&page_size=20").then(function(d) {
+function loadLogs(limit) {
+  limit = Math.min(Math.max(limit || 20, 1), 100);
+  api("/api/logs?page=1&page_size=" + limit).then(function(d) {
     var list = document.getElementById("log-list");
     var items = d.items || [];
+    var total = d.total || 0;
+    var titleEl = document.getElementById("log-panel-title");
+    var expandEl = document.getElementById("log-expand-area");
+    if (titleEl) titleEl.textContent = "最近 " + limit + " 条日志";
     list.innerHTML = items.length ? items.map(function(r) {
-      return "<div class=\"log-line\"><span class=\"ts\">" + escapeHtml(r.created_at) + "</span> " + escapeHtml(r.message) + "</div>";
-    }).join("") : "<div class=\"log-line\">暂无日志</div>";
+      var levelClass = (r.level === "error") ? " log-line--error" : " log-line--info";
+      return "<div class=\"log-line" + levelClass + "\"><span class=\"ts\">" + escapeHtml(r.created_at) + "</span> " + escapeHtml(r.message) + "</div>";
+    }).join("") : "<div class=\"log-line log-line--info\">暂无日志</div>";
+    if (expandEl) {
+      if (limit < 100 && total > 20) {
+        expandEl.innerHTML = "<button type=\"button\" id=\"btn-expand-logs\" class=\"log-panel-expand-btn\">展开更多（最多100条）</button>";
+        expandEl.style.display = "";
+        document.getElementById("btn-expand-logs").addEventListener("click", function() { loadLogs(100); });
+      } else if (limit === 100 && total > 20) {
+        expandEl.innerHTML = "<span class=\"log-panel-expand-done\">已显示最多100条</span>";
+        expandEl.style.display = "";
+      } else {
+        expandEl.innerHTML = "";
+        expandEl.style.display = "none";
+      }
+    }
   }).catch(function() {
-    document.getElementById("log-list").innerHTML = "<div class=\"log-line\">加载失败</div>";
+    document.getElementById("log-list").innerHTML = "<div class=\"log-line log-line--error\">加载失败</div>";
+    var expandEl = document.getElementById("log-expand-area");
+    if (expandEl) { expandEl.innerHTML = ""; expandEl.style.display = "none"; }
   });
 }
 document.getElementById("btn-start-register").addEventListener("click", function() {
-  toast("开启注册功能开发中", "info");
+  if (this.disabled) return;
+  api("/api/register/start", { method: "POST" }).then(function(d) {
+    if (d && d.ok) {
+      toast(d.message || "已启动注册任务", "success");
+      updateRegisterStatusOnce();
+      loadDashboard();
+      loadLogs();
+    } else {
+      toast(d.message || "启动失败", "error");
+    }
+  }).catch(function(err) {
+    toast(err.message || "请求失败", "error");
+  });
+});
+document.getElementById("btn-stop-register").addEventListener("click", function() {
+  api("/api/register/stop", { method: "POST" }).then(function(d) {
+    if (d && d.ok) {
+      toast(d.message || "已请求停止", "info");
+      updateRegisterStatusOnce();
+    } else {
+      toast(d.message || "操作失败", "error");
+    }
+  }).catch(function(err) {
+    toast(err.message || "请求失败", "error");
+  });
 });
 document.getElementById("btn-start-bind-phone").addEventListener("click", function() {
   toast("开始绑定手机功能开发中", "info");
@@ -741,6 +877,17 @@ document.getElementById("btn-start-plus").addEventListener("click", function() {
 document.getElementById("btn-refresh-dashboard").addEventListener("click", function() {
   loadDashboard();
   loadLogs();
+});
+document.getElementById("btn-clear-logs").addEventListener("click", function() {
+  confirmBox("确定清空所有日志？", function() {
+    api("/api/logs", { method: "DELETE" }).then(function(d) {
+      toast(d.message || "已清空日志", "success");
+      loadDashboard();
+      loadLogs();
+    }).catch(function(err) {
+      toast(err.message || "清空失败", "error");
+    });
+  });
 });
 
 // Settings
