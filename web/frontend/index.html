@@ -47,6 +47,7 @@
       <main class="main">
         <section id="panel-accounts" class="panel">
           <h2>账号管理</h2>
+          <p id="accounts-db-hint" class="db-hint" style="margin:0 0 0.75rem 0;font-size:0.85rem;color:var(--text-muted, #888);"></p>
           <div class="toolbar">
             <label>状态 <select id="filter-status"><option value="">全部</option><option value="Registered">已注册</option><option value="Registered+Sora">Sora</option><option value="Plus activated">Plus</option></select></label>
             <label>SORA <select id="filter-sora"><option value="">全部</option><option value="true">是</option><option value="false">否</option></select></label>
@@ -55,7 +56,7 @@
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>ID</th><th>邮箱</th><th>密码</th><th>状态</th><th>SORA</th><th>PLUS</th><th>手机</th><th>注册时间</th></tr></thead>
+              <thead><tr><th>ID</th><th>邮箱</th><th title="ChatGPT 登录密码，非邮箱密码">GPT密码</th><th>状态</th><th>SORA</th><th>PLUS</th><th>手机</th><th>RT</th><th>注册时间</th></tr></thead>
               <tbody id="accounts-tbody"></tbody>
             </table>
           </div>

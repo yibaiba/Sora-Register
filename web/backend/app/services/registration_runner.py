@@ -1,7 +1,9 @@
 """
 单条注册任务运行器：从 DB 取未注册邮箱与配置，调 protocol_register，落库 accounts/run_logs，更新 last_run_success/fail。
 不实现 8 步协议，仅「取配置 → 调 register_one_protocol / activate_sora → 落库」。
+环境变量：PRINT_STEP_LOGS=1 时步骤日志同时输出到 stdout，便于终端跑测。
 """
+import os
 import random
 from datetime import datetime
 from typing import Optional, Tuple
@@ -41,14 +43,16 @@ def _get_registration_settings() -> dict:
     return out
 
 
-def fetch_one_unregistered_email(conn) -> Optional[Tuple]:
-    """取一条未注册邮箱。返回 (id, email, password, uuid, token) 或 None。"""
+def fetch_one_unregistered_email(conn, order_random: bool = False) -> Optional[Tuple]:
+    """取一条未注册邮箱。返回 (id, email, password, uuid, token) 或 None。order_random=True 时随机取一条便于轮换邮箱。"""
     c = conn.cursor()
+    order = "ORDER BY RANDOM()" if order_random else ""
     c.execute(
-        """SELECT e.id, e.email, e.password, e.uuid, e.token
+        f"""SELECT e.id, e.email, e.password, e.uuid, e.token
            FROM emails e
            LEFT JOIN accounts a ON LOWER(TRIM(e.email)) = LOWER(TRIM(a.email))
            WHERE a.email IS NULL AND e.email IS NOT NULL AND TRIM(e.email) != ''
+           {order}
            LIMIT 1"""
     )
     row = c.fetchone()
@@ -102,9 +106,10 @@ def _run_one_registration(
 
     base = (settings.get("email_api_url") or "https://gapi.hotmail007.com").rstrip("/")
     key = settings.get("email_api_key") or ""
-    # 配置了代理则必须使用该代理，不覆盖为 None
-    configured_proxy = (settings.get("proxy_url") or "").strip()
-    proxy_url = configured_proxy if configured_proxy else None
+    # 支持多行 proxy_url：每行一个代理，随机选用其一
+    proxy_raw = (settings.get("proxy_url") or "").strip()
+    proxy_lines = [p.strip() for p in proxy_raw.splitlines() if p.strip()]
+    proxy_url = random.choice(proxy_lines) if proxy_lines else None
 
     account_str = f"{email}:{password or ''}:{token or ''}:{uuid_val or ''}"
     otp_timeout = 120
@@ -117,6 +122,8 @@ def _run_one_registration(
             stop_check=is_stop_requested,
         )
 
+    _print_steps = os.environ.get("PRINT_STEP_LOGS", "").strip().lower() in ("1", "true", "yes")
+
     def _step_log(msg: str) -> None:
         try:
             with get_db() as conn:
@@ -127,6 +134,8 @@ def _run_one_registration(
                 )
         except Exception:
             pass
+        if _print_steps and msg:
+            print(f"  [step] {msg}", flush=True)
 
     set_task_config(proxy_url=proxy_url, timeout=60, http_max_retries=5)
     try:
@@ -140,6 +149,14 @@ def _run_one_registration(
             step_log_fn=_step_log,
             stop_check=is_stop_requested,
         )
+    except pr.RetryException as e:
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO run_logs (task_id, level, message) VALUES (?, ?, ?)",
+                (task_id, "info", f"409 会话已清理，将重试 {email}: {e!s}"),
+            )
+        return False, str(e), None
     except Exception as e:
         with get_db() as conn:
             c = conn.cursor()
@@ -162,11 +179,21 @@ def _run_one_registration(
     return success, status_extra, tokens
 
 
+# 密码规则：与 protocol_register.PASSWORD_MIN_LENGTH 一致，OpenAI 要求最少 12 位，建议含大小写+数字+符号
+PASSWORD_MIN_LENGTH = 12
+
+
 def _random_password() -> str:
-    """生成简单随机密码，满足协议要求。"""
+    """生成随机密码：至少 12 位，含大小写、数字、符号，满足 OpenAI 协议要求。"""
     import string
-    pool = string.ascii_letters + string.digits + "!@#$"
-    return "".join(random.choices(pool, k=14))
+    upper = random.choices(string.ascii_uppercase, k=2)
+    lower = random.choices(string.ascii_lowercase, k=2)
+    digit = random.choices(string.digits, k=2)
+    symbol = random.choices("!@#$%&*", k=2)
+    rest = random.choices(string.ascii_letters + string.digits + "!@#$%&*", k=PASSWORD_MIN_LENGTH - 8)
+    parts = upper + lower + digit + symbol + rest
+    random.shuffle(parts)
+    return "".join(parts)
 
 
 def run_one_with_retry(
@@ -183,7 +210,7 @@ def run_one_with_retry(
     返回是否最终成功。
     """
     pwd = (password or "").strip() or _random_password()
-    if len(pwd) < 12:
+    if len(pwd) < PASSWORD_MIN_LENGTH:
         pwd = _random_password()
     retry_count = max(1, min(5, int(settings.get("retry_count") or "2")))
     last_error = None
@@ -210,20 +237,60 @@ def run_one_with_retry(
                     (task_id, "info", f"任务已停止，跳过 {email}"),
                 )
             return False
-        success, status_extra, tokens = _run_one_registration(
-            email_id, email, pwd, uuid_val, token, settings, task_id
+        use_settings = settings
+        _restore_direct_auth = None
+        err = str(last_error or "").lower()
+        retry_no_proxy = (
+            attempt == 1
+            and last_error
+            and (
+                "409" in str(last_error)
+                or "invalid_state" in err
+                or "tls" in err
+                or "connection timed out" in err
+                or "curl: (28)" in str(last_error)
+                or "curl: (35)" in str(last_error)
+            )
         )
+        if retry_no_proxy:
+            use_settings = {**settings, "proxy_url": ""}
+            _restore_direct_auth = os.environ.get("USE_DIRECT_AUTH")
+            os.environ["USE_DIRECT_AUTH"] = "1"
+            print("[*] retry: no proxy + USE_DIRECT_AUTH=1", flush=True)
+            with get_db() as conn:
+                c = conn.cursor()
+                c.execute(
+                    "INSERT INTO run_logs (task_id, level, message) VALUES (?, ?, ?)",
+                    (task_id, "info", "重试：无代理 + 直连 auth"),
+                )
+        try:
+            success, status_extra, tokens = _run_one_registration(
+                email_id, email, pwd, uuid_val, token, use_settings, task_id
+            )
+        finally:
+            if _restore_direct_auth is not None:
+                if _restore_direct_auth:
+                    os.environ["USE_DIRECT_AUTH"] = _restore_direct_auth
+                else:
+                    os.environ.pop("USE_DIRECT_AUTH", None)
         if success:
             _ensure_injected()
             import protocol_register as pr
-            # 注册与开通 Sora 必须使用同一代理，一步到位
-            same_proxy = (settings.get("proxy_url") or "").strip() or None
+            proxy_raw = (settings.get("proxy_url") or "").strip()
+            proxy_lines = [p.strip() for p in proxy_raw.splitlines() if p.strip()]
+            same_proxy = random.choice(proxy_lines) if proxy_lines else None
             if tokens:
                 try:
                     pr.activate_sora(tokens, email, proxy_url=same_proxy)
                 except Exception:
                     pass
             try:
+                rt = ""
+                if isinstance(tokens, dict):
+                    rt = tokens.get("refresh_token") or ""
+                    if not rt and isinstance(tokens.get("session"), dict):
+                        rt = (tokens.get("session") or {}).get("refresh_token") or ""
+                    rt = (rt or "").strip() if rt else ""
                 with get_db() as conn:
                     c = conn.cursor()
                     c.execute(
@@ -237,14 +304,24 @@ def run_one_with_retry(
                             1 if tokens else 0,
                             0,
                             0,
-                            (settings.get("proxy_url") or "").strip() or None,
-                            (tokens.get("refresh_token") or "") if isinstance(tokens, dict) else None,
+                            (same_proxy or ""),
+                            rt or None,
                         ),
                     )
                     c.execute(
                         "INSERT INTO run_logs (task_id, level, message) VALUES (?, ?, ?)",
                         (task_id, "info", f"注册成功 {email}"),
                     )
+                    try:
+                        from app.database import DB_PATH
+                        c.execute("SELECT COUNT(*) FROM accounts")
+                        n = c.fetchone()[0]
+                        c.execute(
+                            "INSERT INTO run_logs (task_id, level, message) VALUES (?, ?, ?)",
+                            (task_id, "info", f"账号已写入 accounts 表，数据文件: {DB_PATH}，当前共 {n} 条"),
+                        )
+                    except Exception:
+                        pass
                     c.execute("SELECT value FROM system_settings WHERE key = 'last_run_success'")
                     r2 = c.fetchone()
                     prev_ok = int((r2[0] or "0")) if r2 else 0

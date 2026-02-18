@@ -5,9 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import Depends
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, get_db, DB_PATH
 from app.routers import auth, accounts, settings as settings_router, emails, bank_cards, logs, dashboard, email_api, sms_api, phones, register as register_router
+from app.routers.auth import get_current_user
 
 # 不把轮询接口打进 access 日志，方便调试协议
 class SkipPollPathsFilter(logging.Filter):
@@ -63,6 +65,17 @@ def startup():
 # 前端：protocol/web/frontend
 frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend"
 static_dir = frontend_dir / "static"
+
+
+@app.get("/api/debug/db-info", tags=["debug"])
+def debug_db_info(username: str = Depends(get_current_user)):
+    """返回当前后端使用的数据目录与 accounts 条数，用于核对「账号管理」是否与注册写入同库。"""
+    init_db()
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM accounts")
+        n = c.fetchone()[0]
+    return {"data_dir": settings.data_dir, "db_path": DB_PATH, "accounts_count": n}
 
 
 @app.get("/")

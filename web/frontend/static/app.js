@@ -253,6 +253,10 @@ function loadAccounts() {
   if (status) params.set("status", status);
   if (sora) params.set("has_sora", sora);
   if (plus) params.set("has_plus", plus);
+  api("/api/debug/db-info").then(function (info) {
+    const el = document.getElementById("accounts-db-hint");
+    if (el) el.textContent = "共 " + (info.accounts_count != null ? info.accounts_count : "?") + " 条。若用脚本注册，请用相同 DATA_DIR 启动本后端，否则新账号不会出现在本列表。";
+  }).catch(function () {});
   api("/api/accounts?" + params).then((d) => {
     accountsTotal = d.total;
     const tbody = document.getElementById("accounts-tbody");
@@ -267,6 +271,7 @@ function loadAccounts() {
         <td>${r.has_sora ? "是" : "否"}</td>
         <td>${r.has_plus ? "是" : "否"}</td>
         <td>${r.phone_bound ? "是" : "否"}</td>
+        <td title="${escapeHtml(r.refresh_token || "")}">${escapeHtml((r.refresh_token || "").slice(0, 24))}${(r.refresh_token || "").length > 24 ? "…" : ""}</td>
         <td>${escapeHtml(r.registered_at || r.created_at || "")}</td>
       </tr>`
       )
