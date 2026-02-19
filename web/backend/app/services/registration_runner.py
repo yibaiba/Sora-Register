@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 单条注册任务运行器：从 DB 取未注册邮箱与配置，调 protocol_register，落库 accounts/run_logs，更新 last_run_success/fail。
 不实现 8 步协议，仅「取配置 → 调 register_one_protocol / activate_sora → 落库」。
@@ -61,7 +62,7 @@ def fetch_one_unregistered_email(conn, order_random: bool = False) -> Optional[T
 
 
 def fetch_unregistered_emails(limit: int = 10):
-    """取最多 limit 条未注册邮箱，用于多线程分配。返回 [(id, email, password, uuid, token), ...]。"""
+    """取最多 limit 条未注册邮箱（随机顺序），用于多线程分配。返回 [(id, email, password, uuid, token), ...]。"""
     init_db()
     with get_db() as conn:
         c = conn.cursor()
@@ -70,6 +71,7 @@ def fetch_unregistered_emails(limit: int = 10):
                FROM emails e
                LEFT JOIN accounts a ON LOWER(TRIM(e.email)) = LOWER(TRIM(a.email))
                WHERE a.email IS NULL AND e.email IS NOT NULL AND TRIM(e.email) != ''
+               ORDER BY RANDOM()
                LIMIT ?""",
             (max(1, limit),),
         )
@@ -293,11 +295,30 @@ def run_one_with_retry(
             proxy_raw = (settings.get("proxy_url") or "").strip()
             proxy_lines = [p.strip() for p in proxy_raw.splitlines() if p.strip()]
             same_proxy = random.choice(proxy_lines) if proxy_lines else None
-            if tokens:
+            sora_ok = False
+            has_at = isinstance(tokens, dict) and bool((tokens.get("access_token") or "").strip())
+            if has_at:
+                def _sora_step_log(msg: str):
+                    try:
+                        with get_db() as conn:
+                            c = conn.cursor()
+                            c.execute(
+                                "INSERT INTO run_logs (task_id, level, message, created_at) VALUES (?, ?, ?, ?)",
+                                (task_id, "info", (msg or "")[:500], datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                            )
+                    except Exception:
+                        pass
                 try:
-                    pr.activate_sora(tokens, email, proxy_url=same_proxy)
+                    sora_ok = pr.activate_sora(tokens, email, proxy_url=same_proxy, step_log_fn=_sora_step_log)
                 except Exception:
                     pass
+            elif success and (not tokens or not (tokens.get("refresh_token") or tokens.get("access_token"))):
+                with get_db() as conn:
+                    c = conn.cursor()
+                    c.execute(
+                        "INSERT INTO run_logs (task_id, level, message, created_at) VALUES (?, ?, ?, ?)",
+                        (task_id, "info", "注册成功但无 AT/RT，跳过 Sora 激活", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                    )
             try:
                 rt = ""
                 at = ""
@@ -315,9 +336,9 @@ def run_one_with_retry(
                         (
                             email,
                             pwd,
-                            "Registered+Sora" if tokens else "Registered",
+                            "Registered+Sora" if sora_ok else "Registered",
                             datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            1 if tokens else 0,
+                            1 if sora_ok else 0,
                             0,
                             0,
                             (same_proxy or ""),
@@ -358,6 +379,16 @@ def run_one_with_retry(
                     )
                 return False
             return True
+        if not success and (str(status_extra or "").strip() == "0a_no_session"):
+            print(f"[*] 0a 未过 {email}，跳过该邮箱，下一批自动换用其他账号", flush=True)
+            with get_db() as conn:
+                c = conn.cursor()
+                created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                c.execute(
+                    "INSERT INTO run_logs (task_id, level, message, created_at) VALUES (?, ?, ?, ?)",
+                    (task_id, "info", f"0a 未过 {email}，跳过该邮箱改用下一账号", created),
+                )
+            return False
         last_error = status_extra or "注册失败"
         with get_db() as conn:
             c = conn.cursor()
