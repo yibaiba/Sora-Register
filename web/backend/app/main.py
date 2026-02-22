@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 from pathlib import Path
 from fastapi import FastAPI
@@ -8,12 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
 from app.config import settings
 from app.database import init_db, get_db, DB_PATH
-from app.routers import auth, accounts, settings as settings_router, emails, bank_cards, logs, dashboard, email_api, sms_api, phones, register as register_router
+from app.routers import auth, accounts, settings as settings_router, emails, bank_cards, logs, dashboard, email_api, sms_api, phones, register as register_router, phone_bind as phone_bind_router
 from app.routers.auth import get_current_user
 
 # 不把轮询接口打进 access 日志，方便调试协议
 class SkipPollPathsFilter(logging.Filter):
-    _paths = ("/api/register/status", "/api/dashboard", "/api/logs")
+    _paths = ("/api/register/status", "/api/dashboard", "/api/logs", "/api/phone-bind/status")
     def filter(self, record):
         try:
             # uvicorn AccessFormatter: record.args = (client_addr, method, full_path, http_version, status_code)
@@ -48,6 +49,7 @@ app.include_router(email_api.router)
 app.include_router(sms_api.router)
 app.include_router(phones.router)
 app.include_router(register_router.router)
+app.include_router(phone_bind_router.router)
 
 
 @app.on_event("startup")

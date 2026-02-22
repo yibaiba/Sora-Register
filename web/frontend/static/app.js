@@ -800,6 +800,10 @@ function loadDashboard() {
     document.getElementById("dash-bank-api").textContent = d.bank_api_set ? "已设置" : "未设置";
     document.getElementById("dash-captcha-api").textContent = d.captcha_api_set ? "已设置" : "未设置";
     document.getElementById("dash-threads").textContent = d.thread_count != null ? d.thread_count : "1";
+    api("/api/phone-bind/status").then(function(s) {
+      var stopBtn = document.getElementById("btn-stop-bind-phone");
+      if (stopBtn) stopBtn.style.display = (s && s.running) ? "" : "none";
+    }).catch(function() {});
   }).catch(function() {
     document.getElementById("dash-today").textContent = "—";
     document.getElementById("dash-total").textContent = "—";
@@ -881,7 +885,30 @@ document.getElementById("btn-stop-register").addEventListener("click", function(
   });
 });
 document.getElementById("btn-start-bind-phone").addEventListener("click", function() {
-  toast("开始绑定手机功能开发中", "info");
+  var btn = this;
+  var stopBtn = document.getElementById("btn-stop-bind-phone");
+  btn.disabled = true;
+  api("/api/phone-bind/start", { method: "POST" }).then(function(d) {
+    if (d.ok) {
+      toast("绑定任务已启动，task_id: " + (d.task_id || ""), "success");
+      if (stopBtn) stopBtn.style.display = "";
+      loadDashboard();
+      loadLogs();
+    } else {
+      toast(d.message || "启动失败", "info");
+    }
+  }).catch(function(err) {
+    toast(err.message || "请求失败", "error");
+  }).finally(function() {
+    btn.disabled = false;
+  });
+});
+document.getElementById("btn-stop-bind-phone").addEventListener("click", function() {
+  api("/api/phone-bind/stop", { method: "POST" }).then(function(d) {
+    toast(d.message || "已请求停止", "info");
+  }).catch(function(err) {
+    toast(err.message || "请求失败", "error");
+  });
 });
 document.getElementById("btn-start-plus").addEventListener("click", function() {
   toast("开始开通 Plus 功能开发中", "info");
